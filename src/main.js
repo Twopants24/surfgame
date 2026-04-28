@@ -719,8 +719,9 @@ function animate() {
   surfer.rotation.x =
     Math.cos(surfState.bob * 0.8) * 0.025 +
     THREE.MathUtils.clamp(surfState.velocity * 0.012, -0.08, 0.14) +
-    wave.slopeZ * 0.12;
-  rider.rotation.x = -surfState.backflipAngle;
+    wave.slopeZ * 0.12 +
+    surfState.backflipAngle;
+  rider.rotation.x = 0;
 
   rider.rotation.z = Math.sin(surfState.bob * 1.2) * 0.05 - turnStrength * 0.08;
   const boostMix = boostActive ? 1 : 0;
