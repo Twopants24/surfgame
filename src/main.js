@@ -431,9 +431,9 @@ function setInput(code, isDown) {
     surfState.attachedToWave = false;
     surfState.hopEjectTimer = waveJump ? 0.8 : 0.45;
     if (waveJump) {
-      surfState.backflipSpin = Math.PI * 5.8;
-      surfState.ejectVelocityX = -mainWave.direction.x * 2.6 - mainWave.normal.x * 5.8;
-      surfState.ejectVelocityZ = -mainWave.direction.y * 2.6 - mainWave.normal.y * 5.8;
+      surfState.backflipSpin = -Math.PI * 6.2;
+      surfState.ejectVelocityX = -mainWave.direction.x * 1.8 + mainWave.normal.x * 7.2;
+      surfState.ejectVelocityZ = -mainWave.direction.y * 1.8 + mainWave.normal.y * 7.2;
     }
   }
 }
@@ -719,7 +719,7 @@ function animate() {
     Math.cos(surfState.bob * 0.8) * 0.025 +
     THREE.MathUtils.clamp(surfState.velocity * 0.012, -0.08, 0.14) +
     wave.slopeZ * 0.12 +
-    -surfState.backflipAngle;
+    surfState.backflipAngle;
 
   rider.rotation.z = Math.sin(surfState.bob * 1.2) * 0.05 - turnStrength * 0.08;
   const boostMix = boostActive ? 1 : 0;
