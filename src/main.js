@@ -354,8 +354,6 @@ const surfState = {
   attachedToWave: false,
   boostTimer: 0,
   hopEjectTimer: 0,
-  backflipAngle: 0,
-  backflipSpin: 0,
   ejectVelocityX: 0,
   ejectVelocityZ: 0,
 };
@@ -431,8 +429,6 @@ function setInput(code, isDown) {
     surfState.attachedToWave = false;
     surfState.hopEjectTimer = waveJump ? 0.8 : 0.45;
     if (waveJump) {
-      surfState.backflipAngle = 0;
-      surfState.backflipSpin = Math.PI * 6.4;
       surfState.ejectVelocityX = -mainWave.direction.x * 2.2 + mainWave.normal.x * 8.4;
       surfState.ejectVelocityZ = -mainWave.direction.y * 2.2 + mainWave.normal.y * 8.4;
     }
@@ -667,8 +663,6 @@ function animate() {
   surfState.height = Math.max(0, surfState.height + surfState.hopVelocity * delta);
   if (surfState.height === 0) {
     surfState.hopVelocity = 0;
-    surfState.backflipAngle = 0;
-    surfState.backflipSpin = 0;
     surfState.ejectVelocityX = 0;
     surfState.ejectVelocityZ = 0;
   }
@@ -704,8 +698,6 @@ function animate() {
     surfer.position.z += surfState.ejectVelocityZ * delta;
     surfState.ejectVelocityX *= 1 - Math.min(delta * 2.6, 0.16);
     surfState.ejectVelocityZ *= 1 - Math.min(delta * 2.6, 0.16);
-    surfState.backflipAngle += surfState.backflipSpin * delta;
-    surfState.backflipSpin *= 1 - Math.min(delta * 1.8, 0.08);
   }
   surfer.position.x = THREE.MathUtils.clamp(surfer.position.x, -58, 58);
   surfer.position.z = THREE.MathUtils.clamp(surfer.position.z, -58, 58);
@@ -719,9 +711,7 @@ function animate() {
   surfer.rotation.x =
     Math.cos(surfState.bob * 0.8) * 0.025 +
     THREE.MathUtils.clamp(surfState.velocity * 0.012, -0.08, 0.14) +
-    wave.slopeZ * 0.12 +
-    surfState.backflipAngle;
-  rider.rotation.x = 0;
+    wave.slopeZ * 0.12;
 
   rider.rotation.z = Math.sin(surfState.bob * 1.2) * 0.05 - turnStrength * 0.08;
   const boostMix = boostActive ? 1 : 0;
