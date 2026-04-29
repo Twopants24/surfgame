@@ -560,9 +560,12 @@ function sampleWaveField(x, z, time) {
     const contactFactor = THREE.MathUtils.clamp(1 - Math.abs(faceOffset) / contactBandWidth, 0, 1);
     const touchFactor = THREE.MathUtils.clamp(1 - Math.abs(faceOffset) / touchBandWidth, 0, 1);
     const touch = touchFactor * shoulder * face;
-    const lift = contactFactor * shoulder * face;
+    const centerOffset = crestAcross - across;
+    const centered = THREE.MathUtils.clamp(1 - Math.abs(centerOffset) / (mainWave.crestWidth * 0.7), 0, 1);
+    const pull = touchFactor * shoulder;
+    const lift = contactFactor * shoulder * face * centered;
     const touching = touch > 0.18 && shoulder > 0.24 && face > 0.2;
-    const attachable = lift > 0.34 && waveHeight > mainWave.amplitude * 0.48;
+    const attachable = lift > 0.28 && centered > 0.62 && waveHeight > mainWave.amplitude * 0.48;
 
     height += waveHeight;
     foam = THREE.MathUtils.clamp((face * 1.35 + lip * 1.2 + Math.max(0, waveHeight / mainWave.amplitude - 0.58) * 0.55) * shoulder * mainWave.foamAmount, 0, 1);
@@ -573,7 +576,9 @@ function sampleWaveField(x, z, time) {
         direction: mainWave.direction,
         face,
         touch,
+        pull,
         lift,
+        centered,
         center,
         along,
         across,
@@ -751,9 +756,17 @@ function animate() {
   surfState.boardPitch = THREE.MathUtils.lerp(surfState.boardPitch, targetPitch, surfState.attachedToWave ? 0.16 : 0.1);
   surfState.boardRoll = THREE.MathUtils.lerp(surfState.boardRoll, targetRoll, surfState.attachedToWave ? 0.18 : 0.12);
 
+  const centerPull = wave.activeWave?.pull ?? 0;
+  const centerOffset = wave.activeWave ? wave.activeWave.targetAcross - wave.activeWave.across : 0;
+  if (!airborne && !surfState.attachedToWave && centerPull > 0.08) {
+    const pullStep = THREE.MathUtils.clamp(centerOffset, -0.42, 0.42) * (0.9 + centerPull * 1.35) * delta;
+    surfer.position.x += mainWave.normal.x * pullStep;
+    surfer.position.z += mainWave.normal.y * pullStep;
+  }
+
   const liftStrength = wave.activeWave?.lift ?? 0;
-  if (!airborne && !surfState.attachedToWave && liftStrength > 0.08) {
-    surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0.55 * liftStrength, 0.16);
+  if (!airborne && !surfState.attachedToWave && liftStrength > 0.06) {
+    surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0.48 * liftStrength, 0.14);
   } else {
     surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0, 0.1);
   }
