@@ -373,6 +373,8 @@ const surfState = {
   heading: 0,
   velocity: 0,
   bob: 0,
+  boardPitch: 0,
+  boardRoll: 0,
   hopVelocity: 0,
   height: 0,
   waveLift: 0,
@@ -730,6 +732,25 @@ function animate() {
   surfState.velocity = THREE.MathUtils.clamp(surfState.velocity, -4.5, maxSpeed);
   surfState.bob += delta * (2.4 + Math.abs(surfState.velocity) * 0.08);
 
+  const forwardVector = new THREE.Vector2(Math.sin(surfState.heading), Math.cos(surfState.heading));
+  const rightVector = new THREE.Vector2(forwardVector.y, -forwardVector.x);
+  const nosePoint = new THREE.Vector2(surfer.position.x, surfer.position.z).addScaledVector(forwardVector, 0.92);
+  const tailPoint = new THREE.Vector2(surfer.position.x, surfer.position.z).addScaledVector(forwardVector, -0.92);
+  const leftRailPoint = new THREE.Vector2(surfer.position.x, surfer.position.z).addScaledVector(rightVector, -0.34);
+  const rightRailPoint = new THREE.Vector2(surfer.position.x, surfer.position.z).addScaledVector(rightVector, 0.34);
+  const noseWave = sampleWaveField(nosePoint.x, nosePoint.y, time);
+  const tailWave = sampleWaveField(tailPoint.x, tailPoint.y, time);
+  const leftRailWave = sampleWaveField(leftRailPoint.x, leftRailPoint.y, time);
+  const rightRailWave = sampleWaveField(rightRailPoint.x, rightRailPoint.y, time);
+  const targetPitch =
+    THREE.MathUtils.clamp((tailWave.height - noseWave.height) / 1.84, -0.42, 0.42) +
+    (surfState.attachedToWave ? 0.05 : 0);
+  const targetRoll =
+    THREE.MathUtils.clamp((leftRailWave.height - rightRailWave.height) / 0.68, -0.48, 0.48) +
+    turnStrength * 0.05;
+  surfState.boardPitch = THREE.MathUtils.lerp(surfState.boardPitch, targetPitch, surfState.attachedToWave ? 0.16 : 0.1);
+  surfState.boardRoll = THREE.MathUtils.lerp(surfState.boardRoll, targetRoll, surfState.attachedToWave ? 0.18 : 0.12);
+
   const liftStrength = wave.activeWave?.lift ?? 0;
   if (!airborne && !surfState.attachedToWave && liftStrength > 0.08) {
     surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0.55 * liftStrength, 0.16);
@@ -741,7 +762,7 @@ function animate() {
     surfState.attachedToWave = false;
   } else if (surfState.hopEjectTimer <= 0 && wave.activeWave?.attachable) {
     surfState.attachedToWave = true;
-    surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0.08, 0.24);
+    surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0.03, 0.24);
   } else if (surfState.attachedToWave && (!wave.activeWave || !wave.activeWave.touching)) {
     surfState.attachedToWave = false;
   }
@@ -764,20 +785,24 @@ function animate() {
   }
   surfer.position.x = THREE.MathUtils.clamp(surfer.position.x, -58, 58);
   surfer.position.z = THREE.MathUtils.clamp(surfer.position.z, -58, 58);
-  const rideLift = surfState.attachedToWave ? 0.08 : surfState.waveLift;
-  surfer.position.y = wave.height + 0.55 + surfState.height + rideLift;
+  const rideLift = surfState.attachedToWave ? 0.03 : surfState.waveLift;
+  const baseFloat = surfState.attachedToWave ? 0.38 : 0.48;
+  surfer.position.y = wave.height + baseFloat + surfState.height + rideLift;
   if (!surfState.attachedToWave && wave.activeWave) {
     const waveHeading = Math.atan2(wave.activeWave.direction.x, wave.activeWave.direction.y);
     surfState.heading = THREE.MathUtils.lerp(surfState.heading, waveHeading, 0.018);
   }
   surfer.rotation.y = surfState.heading;
-  surfer.rotation.z = Math.sin(surfState.bob) * 0.035 + turnStrength * 0.16 - wave.slopeX * 0.15;
-  surfer.rotation.x =
-    Math.cos(surfState.bob * 0.8) * 0.025 +
-    THREE.MathUtils.clamp(surfState.velocity * 0.012, -0.08, 0.14) +
-    wave.slopeZ * 0.12;
+  surfer.rotation.z = 0;
+  surfer.rotation.x = 0;
+  boardGroup.position.y = surfState.attachedToWave ? -0.08 : -0.03;
+  boardGroup.rotation.x = surfState.boardPitch;
+  boardGroup.rotation.y = -Math.PI / 2;
+  boardGroup.rotation.z = surfState.boardRoll;
 
-  rider.rotation.z = Math.sin(surfState.bob * 1.2) * 0.05 - turnStrength * 0.08;
+  rider.position.y = surfState.attachedToWave ? 0 : 0.08;
+  rider.rotation.x = -surfState.boardPitch * 0.35 + (surfState.attachedToWave ? 0.12 : 0.04);
+  rider.rotation.z = -surfState.boardRoll * 0.55 + Math.sin(surfState.bob * 1.2) * 0.04 - turnStrength * 0.05;
   const boostMix = boostActive ? 1 : 0;
   const wakeLengthTarget =
     THREE.MathUtils.clamp(Math.abs(surfState.velocity) / 4, 0.3, 1.8) +
