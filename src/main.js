@@ -70,8 +70,32 @@ const mainWave = {
   peelRate: 0.8,
   wallHeight: 7.2,
   wallDepth: 5.8,
+  faceTightness: 0.82,
+  lipOffset: 0.32,
+  lipTightness: 0.46,
+  bodyOffset: 0.18,
+  troughOffset: 0.72,
+  troughWidth: 0.88,
+  troughStrength: 0.24,
+  foamAmount: 1,
 };
 mainWave.normal = new THREE.Vector2(-mainWave.direction.y, mainWave.direction.x);
+const BASE_WAVE_PROFILE = {
+  width: 15.5,
+  amplitude: 4.9,
+  crestWidth: 5.1,
+  peelRate: 0.8,
+  wallHeight: 7.2,
+  wallDepth: 5.8,
+  faceTightness: 0.82,
+  lipOffset: 0.32,
+  lipTightness: 0.46,
+  bodyOffset: 0.18,
+  troughOffset: 0.72,
+  troughWidth: 0.88,
+  troughStrength: 0.24,
+  foamAmount: 1,
+};
 const WAVE_RESPAWN_DISTANCE = 156;
 const waveState = {
   travel: 0,
@@ -402,6 +426,29 @@ function getWaveCenter() {
   return mainWave.start.clone().addScaledVector(mainWave.direction, waveState.travel);
 }
 
+function randomRange(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function randomizeWaveProfile() {
+  mainWave.width = BASE_WAVE_PROFILE.width * randomRange(0.88, 1.22);
+  mainWave.amplitude = BASE_WAVE_PROFILE.amplitude * randomRange(0.82, 1.24);
+  mainWave.crestWidth = BASE_WAVE_PROFILE.crestWidth * randomRange(0.82, 1.18);
+  mainWave.peelRate = BASE_WAVE_PROFILE.peelRate * randomRange(0.8, 1.18);
+  mainWave.wallHeight = BASE_WAVE_PROFILE.wallHeight * randomRange(0.88, 1.18);
+  mainWave.wallDepth = BASE_WAVE_PROFILE.wallDepth * randomRange(0.84, 1.16);
+  mainWave.faceTightness = randomRange(0.7, 0.96);
+  mainWave.lipOffset = randomRange(0.24, 0.42);
+  mainWave.lipTightness = randomRange(0.36, 0.58);
+  mainWave.bodyOffset = randomRange(0.08, 0.28);
+  mainWave.troughOffset = randomRange(0.6, 0.86);
+  mainWave.troughWidth = randomRange(0.78, 1.04);
+  mainWave.troughStrength = randomRange(0.18, 0.34);
+  mainWave.foamAmount = randomRange(0.85, 1.45);
+}
+
+randomizeWaveProfile();
+
 function updateWaveLifecycle(delta) {
   if (!sceneState.wavesEnabled) {
     return;
@@ -410,6 +457,7 @@ function updateWaveLifecycle(delta) {
   if (waveState.travel > WAVE_RESPAWN_DISTANCE) {
     waveState.travel = 0;
     surfState.attachedToWave = false;
+    randomizeWaveProfile();
   }
 }
 
@@ -498,11 +546,11 @@ function sampleWaveField(x, z, time) {
     const shoulder = Math.exp(-((along * along) / ((SINGLE_WAVE_LENGTH * 0.48) ** 2)));
     const peelOffset = along * mainWave.peelRate;
     const faceCenter = peelOffset + mainWave.crestWidth * 0.52;
-    const body = Math.exp(-(((across + mainWave.width * 0.18 + peelOffset * 0.08) ** 2) / ((mainWave.width * 1.08) ** 2)));
-    const face = Math.exp(-(((across - faceCenter) ** 2) / ((mainWave.crestWidth * 0.82) ** 2)));
-    const lip = Math.exp(-(((across - (faceCenter + mainWave.crestWidth * 0.32)) ** 2) / ((mainWave.crestWidth * 0.46) ** 2)));
-    const trough = Math.exp(-(((across + mainWave.width * 0.72) ** 2) / ((mainWave.width * 0.88) ** 2)));
-    const waveHeight = (body * 0.92 + face * 1.45 + lip * 0.95 - trough * 0.24) * shoulder * mainWave.amplitude;
+    const body = Math.exp(-(((across + mainWave.width * mainWave.bodyOffset + peelOffset * 0.08) ** 2) / ((mainWave.width * 1.08) ** 2)));
+    const face = Math.exp(-(((across - faceCenter) ** 2) / ((mainWave.crestWidth * mainWave.faceTightness) ** 2)));
+    const lip = Math.exp(-(((across - (faceCenter + mainWave.crestWidth * mainWave.lipOffset)) ** 2) / ((mainWave.crestWidth * mainWave.lipTightness) ** 2)));
+    const trough = Math.exp(-(((across + mainWave.width * mainWave.troughOffset) ** 2) / ((mainWave.width * mainWave.troughWidth) ** 2)));
+    const waveHeight = (body * 0.92 + face * 1.45 + lip * 0.95 - trough * mainWave.troughStrength) * shoulder * mainWave.amplitude;
     const faceOffset = across - faceCenter;
     const contactBandWidth = mainWave.crestWidth * 0.85;
     const touchBandWidth = mainWave.crestWidth * 1.35;
@@ -514,7 +562,7 @@ function sampleWaveField(x, z, time) {
     const attachable = lift > 0.34 && waveHeight > mainWave.amplitude * 0.48;
 
     height += waveHeight;
-    foam = THREE.MathUtils.clamp((face * 1.35 + lip * 1.2 + Math.max(0, waveHeight / mainWave.amplitude - 0.58) * 0.55) * shoulder, 0, 1);
+    foam = THREE.MathUtils.clamp((face * 1.35 + lip * 1.2 + Math.max(0, waveHeight / mainWave.amplitude - 0.58) * 0.55) * shoulder * mainWave.foamAmount, 0, 1);
 
     if (touching || attachable) {
       activeWave = {
@@ -559,11 +607,11 @@ function sampleWaveFieldRaw(x, z, time) {
     const shoulder = Math.exp(-((along * along) / ((SINGLE_WAVE_LENGTH * 0.48) ** 2)));
     const peelOffset = along * mainWave.peelRate;
     const faceCenter = peelOffset + mainWave.crestWidth * 0.52;
-    const body = Math.exp(-(((across + mainWave.width * 0.18 + peelOffset * 0.08) ** 2) / ((mainWave.width * 1.08) ** 2)));
-    const face = Math.exp(-(((across - faceCenter) ** 2) / ((mainWave.crestWidth * 0.82) ** 2)));
-    const lip = Math.exp(-(((across - (faceCenter + mainWave.crestWidth * 0.32)) ** 2) / ((mainWave.crestWidth * 0.46) ** 2)));
-    const trough = Math.exp(-(((across + mainWave.width * 0.72) ** 2) / ((mainWave.width * 0.88) ** 2)));
-    height += (body * 0.92 + face * 1.45 + lip * 0.95 - trough * 0.24) * shoulder * mainWave.amplitude;
+    const body = Math.exp(-(((across + mainWave.width * mainWave.bodyOffset + peelOffset * 0.08) ** 2) / ((mainWave.width * 1.08) ** 2)));
+    const face = Math.exp(-(((across - faceCenter) ** 2) / ((mainWave.crestWidth * mainWave.faceTightness) ** 2)));
+    const lip = Math.exp(-(((across - (faceCenter + mainWave.crestWidth * mainWave.lipOffset)) ** 2) / ((mainWave.crestWidth * mainWave.lipTightness) ** 2)));
+    const trough = Math.exp(-(((across + mainWave.width * mainWave.troughOffset) ** 2) / ((mainWave.width * mainWave.troughWidth) ** 2)));
+    height += (body * 0.92 + face * 1.45 + lip * 0.95 - trough * mainWave.troughStrength) * shoulder * mainWave.amplitude;
   }
 
   return height;
@@ -587,10 +635,10 @@ function sampleWaveMeshDeformation(x, z, time) {
   const shoulder = Math.exp(-((along * along) / ((SINGLE_WAVE_LENGTH * 0.48) ** 2)));
   const peelOffset = along * mainWave.peelRate;
   const faceCenter = peelOffset + mainWave.crestWidth * 0.52;
-  const body = Math.exp(-(((across + mainWave.width * 0.18 + peelOffset * 0.08) ** 2) / ((mainWave.width * 1.08) ** 2)));
-  const face = Math.exp(-(((across - faceCenter) ** 2) / ((mainWave.crestWidth * 0.82) ** 2)));
-  const lip = Math.exp(-(((across - (faceCenter + mainWave.crestWidth * 0.32)) ** 2) / ((mainWave.crestWidth * 0.46) ** 2)));
-  const trough = Math.exp(-(((across + mainWave.width * 0.72) ** 2) / ((mainWave.width * 0.88) ** 2)));
+  const body = Math.exp(-(((across + mainWave.width * mainWave.bodyOffset + peelOffset * 0.08) ** 2) / ((mainWave.width * 1.08) ** 2)));
+  const face = Math.exp(-(((across - faceCenter) ** 2) / ((mainWave.crestWidth * mainWave.faceTightness) ** 2)));
+  const lip = Math.exp(-(((across - (faceCenter + mainWave.crestWidth * mainWave.lipOffset)) ** 2) / ((mainWave.crestWidth * mainWave.lipTightness) ** 2)));
+  const trough = Math.exp(-(((across + mainWave.width * mainWave.troughOffset) ** 2) / ((mainWave.width * mainWave.troughWidth) ** 2)));
 
   const crestPull = (face * 2.05 + lip * 1.35 - body * 0.2 - trough * 0.32) * shoulder;
   const peelStretch = (face * 0.72 + lip * 0.4 + body * 0.3) * shoulder;
