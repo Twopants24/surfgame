@@ -546,6 +546,7 @@ function sampleWaveField(x, z, time) {
     const shoulder = Math.exp(-((along * along) / ((SINGLE_WAVE_LENGTH * 0.48) ** 2)));
     const peelOffset = along * mainWave.peelRate;
     const faceCenter = peelOffset + mainWave.crestWidth * 0.52;
+    const crestAcross = faceCenter - mainWave.crestWidth * 0.18;
     const body = Math.exp(-(((across + mainWave.width * mainWave.bodyOffset + peelOffset * 0.08) ** 2) / ((mainWave.width * 1.08) ** 2)));
     const face = Math.exp(-(((across - faceCenter) ** 2) / ((mainWave.crestWidth * mainWave.faceTightness) ** 2)));
     const lip = Math.exp(-(((across - (faceCenter + mainWave.crestWidth * mainWave.lipOffset)) ** 2) / ((mainWave.crestWidth * mainWave.lipTightness) ** 2)));
@@ -574,7 +575,7 @@ function sampleWaveField(x, z, time) {
         center,
         along,
         across,
-        targetAcross: faceCenter,
+        targetAcross: crestAcross,
         touching,
         attachable,
       };
@@ -731,7 +732,7 @@ function animate() {
 
   const liftStrength = wave.activeWave?.lift ?? 0;
   if (!airborne && !surfState.attachedToWave && liftStrength > 0.08) {
-    surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 1.35 * liftStrength, 0.18);
+    surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0.55 * liftStrength, 0.16);
   } else {
     surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0, 0.1);
   }
@@ -740,17 +741,17 @@ function animate() {
     surfState.attachedToWave = false;
   } else if (surfState.hopEjectTimer <= 0 && wave.activeWave?.attachable) {
     surfState.attachedToWave = true;
-    surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0.55, 0.2);
+    surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0.08, 0.24);
   } else if (surfState.attachedToWave && (!wave.activeWave || !wave.activeWave.touching)) {
     surfState.attachedToWave = false;
   }
 
   if (surfState.attachedToWave && wave.activeWave) {
-    const towardFace = THREE.MathUtils.clamp(wave.activeWave.targetAcross - wave.activeWave.across, -0.22, 0.22);
+    const towardFace = THREE.MathUtils.clamp(wave.activeWave.targetAcross - wave.activeWave.across, -0.34, 0.34);
     surfer.position.x += mainWave.direction.x * mainWave.speed * delta;
     surfer.position.z += mainWave.direction.y * mainWave.speed * delta;
-    surfer.position.x += mainWave.normal.x * towardFace * boardProfile.waveGrip * delta;
-    surfer.position.z += mainWave.normal.y * towardFace * boardProfile.waveGrip * delta;
+    surfer.position.x += mainWave.normal.x * towardFace * (boardProfile.waveGrip * 1.45) * delta;
+    surfer.position.z += mainWave.normal.y * towardFace * (boardProfile.waveGrip * 1.45) * delta;
     surfState.velocity = THREE.MathUtils.lerp(surfState.velocity, mainWave.speed, 0.08);
     const waveHeading = Math.atan2(wave.activeWave.direction.x, wave.activeWave.direction.y);
     surfState.heading = THREE.MathUtils.lerp(surfState.heading, waveHeading, 0.035 + boardProfile.waveGrip * 0.02);
@@ -763,7 +764,8 @@ function animate() {
   }
   surfer.position.x = THREE.MathUtils.clamp(surfer.position.x, -58, 58);
   surfer.position.z = THREE.MathUtils.clamp(surfer.position.z, -58, 58);
-  surfer.position.y = wave.height + 0.55 + surfState.height + surfState.waveLift;
+  const rideLift = surfState.attachedToWave ? 0.08 : surfState.waveLift;
+  surfer.position.y = wave.height + 0.55 + surfState.height + rideLift;
   if (!surfState.attachedToWave && wave.activeWave) {
     const waveHeading = Math.atan2(wave.activeWave.direction.x, wave.activeWave.direction.y);
     surfState.heading = THREE.MathUtils.lerp(surfState.heading, waveHeading, 0.018);
