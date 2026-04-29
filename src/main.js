@@ -64,12 +64,12 @@ const mainWave = {
   start: new THREE.Vector2(-48, 46),
   direction: new THREE.Vector2(1, -0.08).normalize(),
   speed: 5.4,
-  width: 12.6,
-  amplitude: 3.25,
-  crestWidth: 4.25,
-  peelRate: 0.7,
-  wallHeight: 5.8,
-  wallDepth: 4.4,
+  width: 15.5,
+  amplitude: 4.9,
+  crestWidth: 5.1,
+  peelRate: 0.8,
+  wallHeight: 7.2,
+  wallDepth: 5.8,
 };
 mainWave.normal = new THREE.Vector2(-mainWave.direction.y, mainWave.direction.x);
 const WAVE_RESPAWN_DISTANCE = 156;
@@ -497,10 +497,12 @@ function sampleWaveField(x, z, time) {
   if (Math.abs(along) < SINGLE_WAVE_LENGTH * 0.5) {
     const shoulder = Math.exp(-((along * along) / ((SINGLE_WAVE_LENGTH * 0.48) ** 2)));
     const peelOffset = along * mainWave.peelRate;
-    const faceCenter = peelOffset + mainWave.crestWidth * 0.4;
-    const body = Math.exp(-(((across + peelOffset * 0.12) ** 2) / (mainWave.width ** 2)));
-    const face = Math.exp(-(((across - faceCenter) ** 2) / (mainWave.crestWidth ** 2)));
-    const waveHeight = (body * 0.75 + face * 0.9) * shoulder * mainWave.amplitude;
+    const faceCenter = peelOffset + mainWave.crestWidth * 0.52;
+    const body = Math.exp(-(((across + mainWave.width * 0.18 + peelOffset * 0.08) ** 2) / ((mainWave.width * 1.08) ** 2)));
+    const face = Math.exp(-(((across - faceCenter) ** 2) / ((mainWave.crestWidth * 0.82) ** 2)));
+    const lip = Math.exp(-(((across - (faceCenter + mainWave.crestWidth * 0.32)) ** 2) / ((mainWave.crestWidth * 0.46) ** 2)));
+    const trough = Math.exp(-(((across + mainWave.width * 0.72) ** 2) / ((mainWave.width * 0.88) ** 2)));
+    const waveHeight = (body * 0.92 + face * 1.45 + lip * 0.95 - trough * 0.24) * shoulder * mainWave.amplitude;
     const faceOffset = across - faceCenter;
     const contactBandWidth = mainWave.crestWidth * 0.85;
     const touchBandWidth = mainWave.crestWidth * 1.35;
@@ -512,7 +514,7 @@ function sampleWaveField(x, z, time) {
     const attachable = lift > 0.34 && waveHeight > mainWave.amplitude * 0.48;
 
     height += waveHeight;
-    foam = face * shoulder;
+    foam = THREE.MathUtils.clamp((face * 1.35 + lip * 1.2 + Math.max(0, waveHeight / mainWave.amplitude - 0.58) * 0.55) * shoulder, 0, 1);
 
     if (touching || attachable) {
       activeWave = {
@@ -556,10 +558,12 @@ function sampleWaveFieldRaw(x, z, time) {
   if (Math.abs(along) < SINGLE_WAVE_LENGTH * 0.5) {
     const shoulder = Math.exp(-((along * along) / ((SINGLE_WAVE_LENGTH * 0.48) ** 2)));
     const peelOffset = along * mainWave.peelRate;
-    const faceCenter = peelOffset + mainWave.crestWidth * 0.4;
-    const body = Math.exp(-(((across + peelOffset * 0.12) ** 2) / (mainWave.width ** 2)));
-    const face = Math.exp(-(((across - faceCenter) ** 2) / (mainWave.crestWidth ** 2)));
-    height += (body * 0.75 + face * 0.9) * shoulder * mainWave.amplitude;
+    const faceCenter = peelOffset + mainWave.crestWidth * 0.52;
+    const body = Math.exp(-(((across + mainWave.width * 0.18 + peelOffset * 0.08) ** 2) / ((mainWave.width * 1.08) ** 2)));
+    const face = Math.exp(-(((across - faceCenter) ** 2) / ((mainWave.crestWidth * 0.82) ** 2)));
+    const lip = Math.exp(-(((across - (faceCenter + mainWave.crestWidth * 0.32)) ** 2) / ((mainWave.crestWidth * 0.46) ** 2)));
+    const trough = Math.exp(-(((across + mainWave.width * 0.72) ** 2) / ((mainWave.width * 0.88) ** 2)));
+    height += (body * 0.92 + face * 1.45 + lip * 0.95 - trough * 0.24) * shoulder * mainWave.amplitude;
   }
 
   return height;
@@ -582,15 +586,16 @@ function sampleWaveMeshDeformation(x, z, time) {
 
   const shoulder = Math.exp(-((along * along) / ((SINGLE_WAVE_LENGTH * 0.48) ** 2)));
   const peelOffset = along * mainWave.peelRate;
-  const faceCenter = peelOffset + mainWave.crestWidth * 0.4;
-  const body = Math.exp(-(((across + peelOffset * 0.12) ** 2) / (mainWave.width ** 2)));
-  const face = Math.exp(-(((across - faceCenter) ** 2) / (mainWave.crestWidth ** 2)));
-  const trough = Math.exp(-(((across + mainWave.width * 0.75) ** 2) / ((mainWave.width * 1.15) ** 2)));
+  const faceCenter = peelOffset + mainWave.crestWidth * 0.52;
+  const body = Math.exp(-(((across + mainWave.width * 0.18 + peelOffset * 0.08) ** 2) / ((mainWave.width * 1.08) ** 2)));
+  const face = Math.exp(-(((across - faceCenter) ** 2) / ((mainWave.crestWidth * 0.82) ** 2)));
+  const lip = Math.exp(-(((across - (faceCenter + mainWave.crestWidth * 0.32)) ** 2) / ((mainWave.crestWidth * 0.46) ** 2)));
+  const trough = Math.exp(-(((across + mainWave.width * 0.72) ** 2) / ((mainWave.width * 0.88) ** 2)));
 
-  const crestPull = (face * 1.5 - body * 0.24 - trough * 0.1) * shoulder;
-  const peelStretch = (face * 0.55 + body * 0.26) * shoulder;
-  const normalOffset = crestPull * 3.1;
-  const directionOffset = peelStretch * 1.05;
+  const crestPull = (face * 2.05 + lip * 1.35 - body * 0.2 - trough * 0.32) * shoulder;
+  const peelStretch = (face * 0.72 + lip * 0.4 + body * 0.3) * shoulder;
+  const normalOffset = crestPull * 4.7;
+  const directionOffset = peelStretch * 1.55;
 
   return {
     offsetX: mainWave.normal.x * normalOffset + mainWave.direction.x * directionOffset,
@@ -610,7 +615,7 @@ function updateOcean(time) {
     positions[i + 1] = baseY + wave.height;
     positions[i + 2] = baseZ + meshDeformation.offsetZ;
 
-    const foam = THREE.MathUtils.clamp(wave.foam * 1.55 + Math.max(0, wave.height - 1.2) * 0.18, 0, 1);
+    const foam = THREE.MathUtils.clamp(wave.foam * 2.25 + Math.max(0, wave.height - 1) * 0.24, 0, 1);
     oceanColorMix.copy(OCEAN_DEEP_COLOR).lerp(OCEAN_WHITEWATER_COLOR, foam);
     oceanColors[i] = oceanColorMix.r;
     oceanColors[i + 1] = oceanColorMix.g;
