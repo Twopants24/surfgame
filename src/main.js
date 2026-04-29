@@ -729,7 +729,6 @@ function animate() {
   const airborne = surfState.height > 0.02;
 
   const wave = sampleWaveField(surfer.position.x, surfer.position.z, time);
-  let surfaceWave = wave;
   surfState.velocity = THREE.MathUtils.clamp(surfState.velocity, -4.5, maxSpeed);
   surfState.bob += delta * (2.4 + Math.abs(surfState.velocity) * 0.08);
 
@@ -769,11 +768,11 @@ function animate() {
   }
 
   if (surfState.attachedToWave && wave.activeWave) {
-    const towardFace = THREE.MathUtils.clamp(wave.activeWave.targetAcross - wave.activeWave.across, -0.52, 0.52);
+    const towardFace = THREE.MathUtils.clamp(wave.activeWave.targetAcross - wave.activeWave.across, -0.34, 0.34);
     surfer.position.x += mainWave.direction.x * mainWave.speed * delta;
     surfer.position.z += mainWave.direction.y * mainWave.speed * delta;
-    surfer.position.x += mainWave.normal.x * towardFace * (boardProfile.waveGrip * 2.6) * delta;
-    surfer.position.z += mainWave.normal.y * towardFace * (boardProfile.waveGrip * 2.6) * delta;
+    surfer.position.x += mainWave.normal.x * towardFace * (boardProfile.waveGrip * 1.45) * delta;
+    surfer.position.z += mainWave.normal.y * towardFace * (boardProfile.waveGrip * 1.45) * delta;
     surfState.velocity = THREE.MathUtils.lerp(surfState.velocity, mainWave.speed, 0.08);
     const waveHeading = Math.atan2(wave.activeWave.direction.x, wave.activeWave.direction.y);
     surfState.heading = THREE.MathUtils.lerp(surfState.heading, waveHeading, 0.035 + boardProfile.waveGrip * 0.02);
@@ -786,18 +785,17 @@ function animate() {
   }
   surfer.position.x = THREE.MathUtils.clamp(surfer.position.x, -58, 58);
   surfer.position.z = THREE.MathUtils.clamp(surfer.position.z, -58, 58);
-  surfaceWave = sampleWaveField(surfer.position.x, surfer.position.z, time);
-  const rideLift = surfState.attachedToWave ? 0 : surfState.waveLift;
-  const baseFloat = surfState.attachedToWave ? 0.22 : 0.48;
-  surfer.position.y = surfaceWave.height + baseFloat + surfState.height + rideLift;
-  if (!surfState.attachedToWave && surfaceWave.activeWave) {
-    const waveHeading = Math.atan2(surfaceWave.activeWave.direction.x, surfaceWave.activeWave.direction.y);
+  const rideLift = surfState.attachedToWave ? 0.03 : surfState.waveLift;
+  const baseFloat = surfState.attachedToWave ? 0.38 : 0.48;
+  surfer.position.y = wave.height + baseFloat + surfState.height + rideLift;
+  if (!surfState.attachedToWave && wave.activeWave) {
+    const waveHeading = Math.atan2(wave.activeWave.direction.x, wave.activeWave.direction.y);
     surfState.heading = THREE.MathUtils.lerp(surfState.heading, waveHeading, 0.018);
   }
   surfer.rotation.y = surfState.heading;
   surfer.rotation.z = 0;
   surfer.rotation.x = 0;
-  boardGroup.position.y = surfState.attachedToWave ? -0.12 : -0.03;
+  boardGroup.position.y = surfState.attachedToWave ? -0.08 : -0.03;
   boardGroup.rotation.x = surfState.boardPitch;
   boardGroup.rotation.y = -Math.PI / 2;
   boardGroup.rotation.z = surfState.boardRoll;
@@ -808,10 +806,9 @@ function animate() {
   const boostMix = boostActive ? 1 : 0;
   const wakeLengthTarget =
     THREE.MathUtils.clamp(Math.abs(surfState.velocity) / 4, 0.3, 1.8) +
-    boostMix * (0.55 + surfaceWave.foam * 0.35);
+    boostMix * (0.55 + wave.foam * 0.35);
   const wakeWidthTarget = 1 + boostMix * 0.28;
-  const wakeOpacityTarget =
-    0.1 + surfaceWave.foam * 0.28 + (Math.abs(surfState.velocity) > 1 ? 0.1 : 0) + boostMix * 0.22;
+  const wakeOpacityTarget = 0.1 + wave.foam * 0.28 + (Math.abs(surfState.velocity) > 1 ? 0.1 : 0) + boostMix * 0.22;
 
   wake.scale.y = THREE.MathUtils.lerp(wake.scale.y, wakeLengthTarget, 0.12);
   wake.scale.x = THREE.MathUtils.lerp(wake.scale.x, wakeWidthTarget, 0.1);
@@ -820,11 +817,11 @@ function animate() {
   const foamPulse = 0.85 + Math.sin(time * 18) * 0.15;
   boostFoam.material.opacity = THREE.MathUtils.lerp(
     boostFoam.material.opacity,
-    boostMix * (0.18 + surfaceWave.foam * 0.32) * foamPulse,
+    boostMix * (0.18 + wave.foam * 0.32) * foamPulse,
     0.16
   );
   boostFoam.scale.x = THREE.MathUtils.lerp(boostFoam.scale.x, 0.7 + boostMix * 0.65, 0.12);
-  boostFoam.scale.y = THREE.MathUtils.lerp(boostFoam.scale.y, 0.7 + boostMix * 1.1 + surfaceWave.foam * 0.2, 0.12);
+  boostFoam.scale.y = THREE.MathUtils.lerp(boostFoam.scale.y, 0.7 + boostMix * 1.1 + wave.foam * 0.2, 0.12);
   boostFoam.position.y = 0.05 + boostMix * 0.08;
 
   buoys.forEach((buoy, index) => {
@@ -845,10 +842,10 @@ function animate() {
       : boostActive
       ? "Boosting"
       : surfState.attachedToWave
-      ? surfaceWave.activeWave?.face > 0.42
+      ? wave.activeWave.face > 0.42
         ? "Riding wave"
         : "On wave"
-      : surfaceWave.activeWave?.touching
+      : wave.activeWave?.touching
       ? "Climbing wave"
       : speedKnots > 1.2
       ? "Carving"
