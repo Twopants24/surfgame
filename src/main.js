@@ -5,6 +5,9 @@ const speedValue = document.getElementById("speed-value");
 const stateValue = document.getElementById("state-value");
 const wavesToggle = document.getElementById("waves-toggle");
 const boardSelect = document.getElementById("board-select");
+const touchJoystick = document.getElementById("touch-joystick");
+const touchJoystickThumb = document.getElementById("touch-joystick-thumb");
+const touchJumpButton = document.getElementById("touch-jump");
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -369,6 +372,12 @@ const input = {
   boost: false,
 };
 
+const touchState = {
+  pointerId: null,
+  x: 0,
+  y: 0,
+};
+
 const surfState = {
   heading: 0,
   velocity: 0,
@@ -463,6 +472,21 @@ function updateWaveLifecycle(delta) {
   }
 }
 
+function triggerJump() {
+  if (surfState.height > 0.02) {
+    return;
+  }
+  const waveJump = surfState.attachedToWave;
+  surfState.hopVelocity = waveJump ? 5.8 : 4.8;
+  surfState.attachedToWave = false;
+  surfState.waveLift = 0;
+  surfState.hopEjectTimer = waveJump ? 0.8 : 0.45;
+  if (waveJump) {
+    surfState.ejectVelocityX = mainWave.normal.x * 9.2 - mainWave.direction.x * 1.4;
+    surfState.ejectVelocityZ = mainWave.normal.y * 9.2 - mainWave.direction.y * 1.4;
+  }
+}
+
 function setInput(code, isDown) {
   if (code === "KeyW" || code === "ArrowUp") input.forward = isDown;
   if (code === "KeyS" || code === "ArrowDown") input.backward = isDown;
@@ -474,16 +498,8 @@ function setInput(code, isDown) {
     }
     input.boost = isDown;
   }
-  if (isDown && code === "Space" && surfState.height <= 0.02) {
-    const waveJump = surfState.attachedToWave;
-    surfState.hopVelocity = waveJump ? 5.8 : 4.8;
-    surfState.attachedToWave = false;
-    surfState.waveLift = 0;
-    surfState.hopEjectTimer = waveJump ? 0.8 : 0.45;
-    if (waveJump) {
-      surfState.ejectVelocityX = mainWave.normal.x * 9.2 - mainWave.direction.x * 1.4;
-      surfState.ejectVelocityZ = mainWave.normal.y * 9.2 - mainWave.direction.y * 1.4;
-    }
+  if (isDown && code === "Space") {
+    triggerJump();
   }
 }
 
@@ -493,6 +509,24 @@ function resetInputState() {
   input.left = false;
   input.right = false;
   input.boost = false;
+  resetTouchJoystick();
+}
+
+function applyTouchVector(x, y) {
+  touchState.x = x;
+  touchState.y = y;
+  input.left = x < -0.22;
+  input.right = x > 0.22;
+  input.forward = y < -0.18;
+  input.backward = y > 0.22;
+  if (touchJoystickThumb) {
+    touchJoystickThumb.style.transform = `translate(${x * 34}px, ${y * 34}px)`;
+  }
+}
+
+function resetTouchJoystick() {
+  touchState.pointerId = null;
+  applyTouchVector(0, 0);
 }
 
 window.addEventListener("keydown", (event) => {
@@ -516,6 +550,45 @@ wavesToggle?.addEventListener("change", () => {
 });
 boardSelect?.addEventListener("change", () => {
   applyBoardStyle(boardSelect.value);
+});
+touchJoystick?.addEventListener("pointerdown", (event) => {
+  touchState.pointerId = event.pointerId;
+  touchJoystick.setPointerCapture(event.pointerId);
+  const rect = touchJoystick.getBoundingClientRect();
+  const half = rect.width * 0.5;
+  const localX = event.clientX - rect.left - half;
+  const localY = event.clientY - rect.top - half;
+  const radius = rect.width * 0.32;
+  const length = Math.hypot(localX, localY) || 1;
+  const clampScale = Math.min(1, radius / length);
+  applyTouchVector((localX * clampScale) / radius, (localY * clampScale) / radius);
+  event.preventDefault();
+});
+touchJoystick?.addEventListener("pointermove", (event) => {
+  if (touchState.pointerId !== event.pointerId) {
+    return;
+  }
+  const rect = touchJoystick.getBoundingClientRect();
+  const half = rect.width * 0.5;
+  const localX = event.clientX - rect.left - half;
+  const localY = event.clientY - rect.top - half;
+  const radius = rect.width * 0.32;
+  const length = Math.hypot(localX, localY) || 1;
+  const clampScale = Math.min(1, radius / length);
+  applyTouchVector((localX * clampScale) / radius, (localY * clampScale) / radius);
+  event.preventDefault();
+});
+touchJoystick?.addEventListener("pointerup", (event) => {
+  if (touchState.pointerId !== event.pointerId) {
+    return;
+  }
+  touchJoystick.releasePointerCapture(event.pointerId);
+  resetTouchJoystick();
+});
+touchJoystick?.addEventListener("pointercancel", resetTouchJoystick);
+touchJumpButton?.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  triggerJump();
 });
 
 function sampleWaveHeight(x, z, time) {
