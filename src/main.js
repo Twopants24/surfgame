@@ -351,6 +351,7 @@ const surfState = {
   bob: 0,
   hopVelocity: 0,
   height: 0,
+  waveLift: 0,
   attachedToWave: false,
   boostTimer: 0,
   hopEjectTimer: 0,
@@ -427,10 +428,11 @@ function setInput(code, isDown) {
     const waveJump = surfState.attachedToWave;
     surfState.hopVelocity = waveJump ? 5.8 : 4.8;
     surfState.attachedToWave = false;
+    surfState.waveLift = 0;
     surfState.hopEjectTimer = waveJump ? 0.8 : 0.45;
     if (waveJump) {
-      surfState.ejectVelocityX = -mainWave.direction.x * 2.2 + mainWave.normal.x * 8.4;
-      surfState.ejectVelocityZ = -mainWave.direction.y * 2.2 + mainWave.normal.y * 8.4;
+      surfState.ejectVelocityX = mainWave.normal.x * 9.2 - mainWave.direction.x * 1.4;
+      surfState.ejectVelocityZ = mainWave.normal.y * 9.2 - mainWave.direction.y * 1.4;
     }
   }
 }
@@ -499,6 +501,7 @@ function sampleWaveField(x, z, time) {
     const body = Math.exp(-(((across + peelOffset * 0.12) ** 2) / (mainWave.width ** 2)));
     const face = Math.exp(-(((across - faceCenter) ** 2) / (mainWave.crestWidth ** 2)));
     const pickup = Math.exp(-(((across - faceCenter * 0.45) ** 2) / ((mainWave.width * 2.4) ** 2))) * shoulder;
+    const touch = Math.max(body * 0.92, face) * shoulder;
     const waveHeight = (body * 0.75 + face * 0.9) * shoulder * mainWave.amplitude;
 
     height += waveHeight;
@@ -521,11 +524,13 @@ function sampleWaveField(x, z, time) {
         direction: mainWave.direction,
         face,
         pickup,
+        touch,
         center,
         along,
         across,
         targetAcross: faceCenter,
-        attachable: pickup > 0.18 && shoulder > 0.2,
+        touching: touch > 0.12,
+        attachable: touch > 0.24 && pickup > 0.12 && shoulder > 0.2,
       };
     }
   }
@@ -663,6 +668,9 @@ function animate() {
   surfState.height = Math.max(0, surfState.height + surfState.hopVelocity * delta);
   if (surfState.height === 0) {
     surfState.hopVelocity = 0;
+    if (!surfState.attachedToWave) {
+      surfState.waveLift = 0;
+    }
     surfState.ejectVelocityX = 0;
     surfState.ejectVelocityZ = 0;
   }
@@ -672,10 +680,18 @@ function animate() {
   surfState.velocity = THREE.MathUtils.clamp(surfState.velocity, -4.5, maxSpeed);
   surfState.bob += delta * (2.4 + Math.abs(surfState.velocity) * 0.08);
 
+  const touchStrength = wave.activeWave?.touch ?? 0;
+  if (!airborne && !surfState.attachedToWave && touchStrength > 0.12) {
+    surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0.9 * touchStrength, 0.12);
+  } else {
+    surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0, 0.1);
+  }
+
   if (airborne) {
     surfState.attachedToWave = false;
   } else if (surfState.hopEjectTimer <= 0 && wave.activeWave?.attachable) {
     surfState.attachedToWave = true;
+    surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0.55, 0.2);
   } else if (surfState.attachedToWave && (!wave.activeWave || wave.activeWave.pickup < 0.08)) {
     surfState.attachedToWave = false;
   }
@@ -701,7 +717,7 @@ function animate() {
   }
   surfer.position.x = THREE.MathUtils.clamp(surfer.position.x, -58, 58);
   surfer.position.z = THREE.MathUtils.clamp(surfer.position.z, -58, 58);
-  surfer.position.y = wave.height + 0.55 + surfState.height;
+  surfer.position.y = wave.height + 0.55 + surfState.height + surfState.waveLift;
   if (!surfState.attachedToWave && wave.activeWave) {
     const waveHeading = Math.atan2(wave.activeWave.direction.x, wave.activeWave.direction.y);
     surfState.heading = THREE.MathUtils.lerp(surfState.heading, waveHeading, 0.018);
@@ -752,10 +768,12 @@ function animate() {
       ? "Airborne"
       : boostActive
       ? "Boosting"
-      : surfState.attachedToWave || wave.activeWave
+      : surfState.attachedToWave
       ? wave.activeWave.face > 0.42
         ? "Riding wave"
-        : "Paddling in"
+        : "On wave"
+      : wave.activeWave?.touching
+      ? "Climbing wave"
       : speedKnots > 1.2
       ? "Carving"
       : "Idle drift";
