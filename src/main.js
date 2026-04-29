@@ -760,8 +760,12 @@ function animate() {
   const centerOffset = wave.activeWave ? wave.activeWave.targetAcross - wave.activeWave.across : 0;
   if (!airborne && !surfState.attachedToWave && centerPull > 0.08) {
     const pullStep = THREE.MathUtils.clamp(centerOffset, -0.42, 0.42) * (0.9 + centerPull * 1.35) * delta;
+    const carryStep = (mainWave.speed * (0.28 + centerPull * 0.42)) * delta;
+    surfer.position.x += mainWave.direction.x * carryStep;
+    surfer.position.z += mainWave.direction.y * carryStep;
     surfer.position.x += mainWave.normal.x * pullStep;
     surfer.position.z += mainWave.normal.y * pullStep;
+    surfState.velocity = Math.max(surfState.velocity, mainWave.speed * (0.22 + centerPull * 0.28));
   }
 
   const liftStrength = wave.activeWave?.lift ?? 0;
