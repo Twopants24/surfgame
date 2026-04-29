@@ -757,15 +757,16 @@ function animate() {
   surfState.boardRoll = THREE.MathUtils.lerp(surfState.boardRoll, targetRoll, surfState.attachedToWave ? 0.18 : 0.12);
 
   const centerPull = wave.activeWave?.pull ?? 0;
+  const touchCarry = wave.activeWave?.touch ?? 0;
   const centerOffset = wave.activeWave ? wave.activeWave.targetAcross - wave.activeWave.across : 0;
   if (!airborne && !surfState.attachedToWave && centerPull > 0.08) {
     const pullStep = THREE.MathUtils.clamp(centerOffset, -0.42, 0.42) * (0.9 + centerPull * 1.35) * delta;
-    const carryStep = (mainWave.speed * (0.28 + centerPull * 0.42)) * delta;
+    const carryStep = (mainWave.speed * (0.6 + centerPull * 0.65 + touchCarry * 0.45)) * delta;
     surfer.position.x += mainWave.direction.x * carryStep;
     surfer.position.z += mainWave.direction.y * carryStep;
     surfer.position.x += mainWave.normal.x * pullStep;
     surfer.position.z += mainWave.normal.y * pullStep;
-    surfState.velocity = Math.max(surfState.velocity, mainWave.speed * (0.22 + centerPull * 0.28));
+    surfState.velocity = Math.max(surfState.velocity, mainWave.speed * (0.5 + centerPull * 0.35 + touchCarry * 0.22));
   }
 
   const liftStrength = wave.activeWave?.lift ?? 0;
@@ -786,11 +787,12 @@ function animate() {
 
   if (surfState.attachedToWave && wave.activeWave) {
     const towardFace = THREE.MathUtils.clamp(wave.activeWave.targetAcross - wave.activeWave.across, -0.34, 0.34);
-    surfer.position.x += mainWave.direction.x * mainWave.speed * delta;
-    surfer.position.z += mainWave.direction.y * mainWave.speed * delta;
+    const rideCarry = mainWave.speed * (1.02 + wave.activeWave.face * 0.18);
+    surfer.position.x += mainWave.direction.x * rideCarry * delta;
+    surfer.position.z += mainWave.direction.y * rideCarry * delta;
     surfer.position.x += mainWave.normal.x * towardFace * (boardProfile.waveGrip * 1.45) * delta;
     surfer.position.z += mainWave.normal.y * towardFace * (boardProfile.waveGrip * 1.45) * delta;
-    surfState.velocity = THREE.MathUtils.lerp(surfState.velocity, mainWave.speed, 0.08);
+    surfState.velocity = THREE.MathUtils.lerp(surfState.velocity, rideCarry, 0.12);
     const waveHeading = Math.atan2(wave.activeWave.direction.x, wave.activeWave.direction.y);
     surfState.heading = THREE.MathUtils.lerp(surfState.heading, waveHeading, 0.035 + boardProfile.waveGrip * 0.02);
   }
