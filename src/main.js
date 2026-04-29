@@ -548,7 +548,7 @@ function sampleWaveField(x, z, time) {
     const shoulder = Math.exp(-((along * along) / ((SINGLE_WAVE_LENGTH * 0.48) ** 2)));
     const peelOffset = along * mainWave.peelRate;
     const faceCenter = peelOffset + mainWave.crestWidth * 0.52;
-    const rideCenterAcross = faceCenter - mainWave.crestWidth * 0.42;
+    const rideCenterAcross = faceCenter - mainWave.crestWidth * 0.78;
     const body = Math.exp(-(((across + mainWave.width * mainWave.bodyOffset + peelOffset * 0.08) ** 2) / ((mainWave.width * 1.08) ** 2)));
     const face = Math.exp(-(((across - faceCenter) ** 2) / ((mainWave.crestWidth * mainWave.faceTightness) ** 2)));
     const lip = Math.exp(-(((across - (faceCenter + mainWave.crestWidth * mainWave.lipOffset)) ** 2) / ((mainWave.crestWidth * mainWave.lipTightness) ** 2)));
@@ -561,7 +561,7 @@ function sampleWaveField(x, z, time) {
     const touchFactor = THREE.MathUtils.clamp(1 - Math.abs(faceOffset) / touchBandWidth, 0, 1);
     const touch = touchFactor * shoulder * face;
     const centerOffset = rideCenterAcross - across;
-    const centered = THREE.MathUtils.clamp(1 - Math.abs(centerOffset) / (mainWave.crestWidth * 0.9), 0, 1);
+    const centered = THREE.MathUtils.clamp(1 - Math.abs(centerOffset) / (mainWave.crestWidth * 1.05), 0, 1);
     const pull = touchFactor * shoulder * (0.7 + body * 0.45);
     const lift = contactFactor * shoulder * face * centered;
     const touching = touch > 0.18 && shoulder > 0.24 && face > 0.2;
