@@ -759,14 +759,16 @@ function animate() {
   const centerPull = wave.activeWave?.pull ?? 0;
   const touchCarry = wave.activeWave?.touch ?? 0;
   const centerOffset = wave.activeWave ? wave.activeWave.targetAcross - wave.activeWave.across : 0;
-  if (!airborne && !surfState.attachedToWave && centerPull > 0.08) {
-    const pullStep = THREE.MathUtils.clamp(centerOffset, -0.42, 0.42) * (0.9 + centerPull * 1.35) * delta;
-    const carryStep = (mainWave.speed * (0.6 + centerPull * 0.65 + touchCarry * 0.45)) * delta;
+  if (!airborne && !surfState.attachedToWave && touchCarry > 0.08) {
+    const carryStep = mainWave.speed * (0.82 + touchCarry * 0.72) * delta;
     surfer.position.x += mainWave.direction.x * carryStep;
     surfer.position.z += mainWave.direction.y * carryStep;
+    surfState.velocity = Math.max(surfState.velocity, mainWave.speed * (0.7 + touchCarry * 0.32));
+  }
+  if (!airborne && !surfState.attachedToWave && centerPull > 0.08) {
+    const pullStep = THREE.MathUtils.clamp(centerOffset, -0.42, 0.42) * (1.02 + centerPull * 1.5) * delta;
     surfer.position.x += mainWave.normal.x * pullStep;
     surfer.position.z += mainWave.normal.y * pullStep;
-    surfState.velocity = Math.max(surfState.velocity, mainWave.speed * (0.5 + centerPull * 0.35 + touchCarry * 0.22));
   }
 
   const liftStrength = wave.activeWave?.lift ?? 0;
@@ -787,7 +789,7 @@ function animate() {
 
   if (surfState.attachedToWave && wave.activeWave) {
     const towardFace = THREE.MathUtils.clamp(wave.activeWave.targetAcross - wave.activeWave.across, -0.34, 0.34);
-    const rideCarry = mainWave.speed * (1.02 + wave.activeWave.face * 0.18);
+    const rideCarry = mainWave.speed * (1.12 + wave.activeWave.face * 0.26);
     surfer.position.x += mainWave.direction.x * rideCarry * delta;
     surfer.position.z += mainWave.direction.y * rideCarry * delta;
     surfer.position.x += mainWave.normal.x * towardFace * (boardProfile.waveGrip * 1.45) * delta;
