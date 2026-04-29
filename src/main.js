@@ -500,37 +500,33 @@ function sampleWaveField(x, z, time) {
     const faceCenter = peelOffset + mainWave.crestWidth * 0.4;
     const body = Math.exp(-(((across + peelOffset * 0.12) ** 2) / (mainWave.width ** 2)));
     const face = Math.exp(-(((across - faceCenter) ** 2) / (mainWave.crestWidth ** 2)));
-    const pickup = Math.exp(-(((across - faceCenter * 0.45) ** 2) / ((mainWave.width * 2.4) ** 2))) * shoulder;
-    const touch = Math.max(body * 0.92, face) * shoulder;
     const waveHeight = (body * 0.75 + face * 0.9) * shoulder * mainWave.amplitude;
+    const faceOffset = across - faceCenter;
+    const contactBandWidth = mainWave.crestWidth * 0.85;
+    const touchBandWidth = mainWave.crestWidth * 1.35;
+    const contactFactor = THREE.MathUtils.clamp(1 - Math.abs(faceOffset) / contactBandWidth, 0, 1);
+    const touchFactor = THREE.MathUtils.clamp(1 - Math.abs(faceOffset) / touchBandWidth, 0, 1);
+    const touch = touchFactor * shoulder * face;
+    const lift = contactFactor * shoulder * face;
+    const touching = touch > 0.18 && shoulder > 0.24 && face > 0.2;
+    const attachable = lift > 0.34 && waveHeight > mainWave.amplitude * 0.48;
 
     height += waveHeight;
     foam = face * shoulder;
 
-    const carryStrength = Math.max(0, pickup - 0.04);
-    if (carryStrength > 0) {
-      const pullToFace = THREE.MathUtils.clamp(faceCenter - across, -mainWave.width * 1.8, mainWave.width * 1.8);
-      const snap = THREE.MathUtils.clamp(Math.abs(pullToFace) / (mainWave.width * 1.2), 0, 1);
-      const lateralStrength = 0.12 + carryStrength * 0.3 + snap * 0.28;
-      const forwardStrength = 1.1 + carryStrength * 1.6 + snap * 0.7;
-
-      pushX = mainWave.direction.x * forwardStrength;
-      pushZ = mainWave.direction.y * forwardStrength;
-      pushX += mainWave.normal.x * pullToFace * lateralStrength;
-      pushZ += mainWave.normal.y * pullToFace * lateralStrength;
-
+    if (touching || attachable) {
       activeWave = {
-        pushStrength: carryStrength + snap,
+        pushStrength: lift,
         direction: mainWave.direction,
         face,
-        pickup,
         touch,
+        lift,
         center,
         along,
         across,
         targetAcross: faceCenter,
-        touching: touch > 0.12,
-        attachable: touch > 0.24 && pickup > 0.12 && shoulder > 0.2,
+        touching,
+        attachable,
       };
     }
   }
@@ -680,9 +676,9 @@ function animate() {
   surfState.velocity = THREE.MathUtils.clamp(surfState.velocity, -4.5, maxSpeed);
   surfState.bob += delta * (2.4 + Math.abs(surfState.velocity) * 0.08);
 
-  const touchStrength = wave.activeWave?.touch ?? 0;
-  if (!airborne && !surfState.attachedToWave && touchStrength > 0.12) {
-    surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0.9 * touchStrength, 0.12);
+  const liftStrength = wave.activeWave?.lift ?? 0;
+  if (!airborne && !surfState.attachedToWave && liftStrength > 0.08) {
+    surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 1.35 * liftStrength, 0.18);
   } else {
     surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0, 0.1);
   }
@@ -692,7 +688,7 @@ function animate() {
   } else if (surfState.hopEjectTimer <= 0 && wave.activeWave?.attachable) {
     surfState.attachedToWave = true;
     surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0.55, 0.2);
-  } else if (surfState.attachedToWave && (!wave.activeWave || wave.activeWave.pickup < 0.08)) {
+  } else if (surfState.attachedToWave && (!wave.activeWave || !wave.activeWave.touching)) {
     surfState.attachedToWave = false;
   }
 
@@ -705,9 +701,6 @@ function animate() {
     surfState.velocity = THREE.MathUtils.lerp(surfState.velocity, mainWave.speed, 0.08);
     const waveHeading = Math.atan2(wave.activeWave.direction.x, wave.activeWave.direction.y);
     surfState.heading = THREE.MathUtils.lerp(surfState.heading, waveHeading, 0.035 + boardProfile.waveGrip * 0.02);
-  } else if (!airborne) {
-    surfer.position.x += wave.pushX * delta;
-    surfer.position.z += wave.pushZ * delta;
   }
   if (airborne) {
     surfer.position.x += surfState.ejectVelocityX * delta;
