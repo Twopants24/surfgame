@@ -388,6 +388,7 @@ const surfState = {
   hopVelocity: 0,
   height: 0,
   waveLift: 0,
+  waveHoldTimer: 0,
   attachedToWave: false,
   boostTimer: 0,
   hopEjectTimer: 0,
@@ -469,6 +470,7 @@ function updateWaveLifecycle(delta) {
   if (waveState.travel > WAVE_RESPAWN_DISTANCE) {
     waveState.travel = 0;
     surfState.attachedToWave = false;
+    surfState.waveHoldTimer = 0;
     randomizeWaveProfile();
   }
 }
@@ -481,6 +483,7 @@ function triggerJump() {
   surfState.hopVelocity = waveJump ? 5.8 : 4.8;
   surfState.attachedToWave = false;
   surfState.waveLift = 0;
+  surfState.waveHoldTimer = 0;
   surfState.hopEjectTimer = waveJump ? 0.8 : 0.45;
   if (waveJump) {
     surfState.ejectVelocityX = mainWave.normal.x * 9.2 - mainWave.direction.x * 1.4;
@@ -552,6 +555,7 @@ wavesToggle?.addEventListener("change", () => {
   sceneState.wavesEnabled = wavesToggle.checked;
   if (!sceneState.wavesEnabled) {
     surfState.attachedToWave = false;
+    surfState.waveHoldTimer = 0;
   }
 });
 boardSelect?.addEventListener("change", () => {
@@ -788,6 +792,7 @@ function animate() {
   const boardProfile = getBoardProfile();
   surfState.boostTimer = Math.max(0, surfState.boostTimer - delta);
   surfState.hopEjectTimer = Math.max(0, surfState.hopEjectTimer - delta);
+  surfState.waveHoldTimer = Math.max(0, surfState.waveHoldTimer - delta);
   const boostActive = surfState.boostTimer > 0;
 
   updateWaveLifecycle(delta);
@@ -851,6 +856,7 @@ function animate() {
   const rampContact = wave.activeWave?.ramp ?? 0;
   const centerOffset = wave.activeWave ? wave.activeWave.targetAcross - wave.activeWave.across : 0;
   if (!airborne && !surfState.attachedToWave && rampContact > 0.08) {
+    surfState.waveHoldTimer = Math.max(surfState.waveHoldTimer, 0.9);
     const carryStep = mainWave.speed * (0.72 + rampContact * 0.42) * delta;
     surfer.position.x += mainWave.direction.x * carryStep;
     surfer.position.z += mainWave.direction.y * carryStep;
@@ -865,16 +871,23 @@ function animate() {
   const liftStrength = wave.activeWave?.lift ?? 0;
   if (!airborne && !surfState.attachedToWave && liftStrength > 0.06) {
     surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 1.05 * liftStrength, 0.18);
+  } else if (!airborne && !surfState.attachedToWave && surfState.waveHoldTimer > 0) {
+    surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0.32, 0.12);
   } else {
     surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0, 0.1);
   }
 
   if (airborne) {
     surfState.attachedToWave = false;
-  } else if (surfState.hopEjectTimer <= 0 && wave.activeWave?.attachable) {
+    surfState.waveHoldTimer = 0;
+  } else if (
+    surfState.hopEjectTimer <= 0 &&
+    (wave.activeWave?.attachable || (surfState.waveHoldTimer > 0.5 && rampContact > 0.12))
+  ) {
     surfState.attachedToWave = true;
+    surfState.waveHoldTimer = Math.max(surfState.waveHoldTimer, 1.1);
     surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0.03, 0.24);
-  } else if (surfState.attachedToWave && (!wave.activeWave || !wave.activeWave.touching)) {
+  } else if (surfState.attachedToWave && (!wave.activeWave || !wave.activeWave.touching) && surfState.waveHoldTimer <= 0) {
     surfState.attachedToWave = false;
   }
 
@@ -888,6 +901,13 @@ function animate() {
     surfState.velocity = THREE.MathUtils.lerp(surfState.velocity, rideCarry, 0.12);
     const waveHeading = Math.atan2(wave.activeWave.direction.x, wave.activeWave.direction.y);
     surfState.heading = THREE.MathUtils.lerp(surfState.heading, waveHeading, 0.035 + boardProfile.waveGrip * 0.02);
+  } else if (surfState.attachedToWave && surfState.waveHoldTimer > 0) {
+    const rideCarry = mainWave.speed * 1.08;
+    surfer.position.x += mainWave.direction.x * rideCarry * delta;
+    surfer.position.z += mainWave.direction.y * rideCarry * delta;
+    surfState.velocity = THREE.MathUtils.lerp(surfState.velocity, rideCarry, 0.12);
+    const waveHeading = Math.atan2(mainWave.direction.x, mainWave.direction.y);
+    surfState.heading = THREE.MathUtils.lerp(surfState.heading, waveHeading, 0.04);
   }
   if (airborne) {
     surfer.position.x += surfState.ejectVelocityX * delta;
