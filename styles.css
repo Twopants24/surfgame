@@ -184,6 +184,7 @@ h1 {
   align-items: end;
   justify-content: space-between;
   pointer-events: none;
+  z-index: 4;
 }
 
 .joystick,
@@ -246,7 +247,7 @@ h1 {
   transform: scale(0.96);
 }
 
-@media (max-width: 900px) {
+@media (hover: none), (pointer: coarse), (max-width: 900px) {
   .hud {
     grid-template-columns: 1fr;
   }
