@@ -7,6 +7,7 @@ const wavesToggle = document.getElementById("waves-toggle");
 const boardSelect = document.getElementById("board-select");
 const touchJoystick = document.getElementById("touch-joystick");
 const touchJoystickThumb = document.getElementById("touch-joystick-thumb");
+const touchBoostButton = document.getElementById("touch-boost");
 const touchJumpButton = document.getElementById("touch-jump");
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -487,6 +488,11 @@ function triggerJump() {
   }
 }
 
+function triggerBoost() {
+  surfState.boostTimer = getBoardProfile().boostDuration;
+  input.boost = true;
+}
+
 function setInput(code, isDown) {
   if (code === "KeyW" || code === "ArrowUp") input.forward = isDown;
   if (code === "KeyS" || code === "ArrowDown") input.backward = isDown;
@@ -586,6 +592,16 @@ touchJoystick?.addEventListener("pointerup", (event) => {
   resetTouchJoystick();
 });
 touchJoystick?.addEventListener("pointercancel", resetTouchJoystick);
+touchBoostButton?.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  triggerBoost();
+});
+touchBoostButton?.addEventListener("pointerup", () => {
+  input.boost = false;
+});
+touchBoostButton?.addEventListener("pointercancel", () => {
+  input.boost = false;
+});
 touchJumpButton?.addEventListener("pointerdown", (event) => {
   event.preventDefault();
   triggerJump();

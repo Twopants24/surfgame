@@ -188,8 +188,15 @@ h1 {
 }
 
 .joystick,
-.jump-button {
+.jump-button,
+.boost-button {
   pointer-events: auto;
+}
+
+.touch-action-buttons {
+  display: grid;
+  gap: 12px;
+  justify-items: end;
 }
 
 .joystick {
@@ -228,22 +235,33 @@ h1 {
   transition: transform 120ms ease;
 }
 
-.jump-button {
+.jump-button,
+.boost-button {
   min-width: 108px;
-  min-height: 108px;
+  min-height: 88px;
   padding: 0 24px;
   border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 999px;
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3), transparent 55%),
-    rgba(255, 209, 102, 0.9);
   color: #11314f;
   font: 700 1.1rem "Space Grotesk", sans-serif;
   box-shadow: 0 18px 40px rgba(10, 28, 46, 0.28);
   touch-action: manipulation;
 }
 
-.jump-button:active {
+.jump-button {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3), transparent 55%),
+    rgba(255, 209, 102, 0.9);
+}
+
+.boost-button {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.28), transparent 55%),
+    rgba(122, 240, 214, 0.92);
+}
+
+.jump-button:active,
+.boost-button:active {
   transform: scale(0.96);
 }
 
