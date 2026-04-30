@@ -5,6 +5,7 @@ const speedValue = document.getElementById("speed-value");
 const stateValue = document.getElementById("state-value");
 const wavesToggle = document.getElementById("waves-toggle");
 const boardSelect = document.getElementById("board-select");
+const cameraSelect = document.getElementById("camera-select");
 const touchJoystick = document.getElementById("touch-joystick");
 const touchJoystickThumb = document.getElementById("touch-joystick-thumb");
 const touchBoostButton = document.getElementById("touch-boost");
@@ -107,6 +108,7 @@ const waveState = {
 const sceneState = {
   wavesEnabled: true,
   boardStyle: "shortboard",
+  cameraMode: "third",
 };
 const BOARD_PROFILES = {
   shortboard: {
@@ -538,9 +540,19 @@ function resetTouchJoystick() {
   applyTouchVector(0, 0);
 }
 
+function setCameraMode(mode) {
+  sceneState.cameraMode = mode === "first" ? "first" : "third";
+  if (cameraSelect) {
+    cameraSelect.value = sceneState.cameraMode;
+  }
+}
+
 window.addEventListener("keydown", (event) => {
   if (event.code === "Space") {
     event.preventDefault();
+  }
+  if (event.code === "KeyC" && !event.repeat) {
+    setCameraMode(sceneState.cameraMode === "first" ? "third" : "first");
   }
   setInput(event.code, true);
 });
@@ -560,6 +572,9 @@ wavesToggle?.addEventListener("change", () => {
 });
 boardSelect?.addEventListener("change", () => {
   applyBoardStyle(boardSelect.value);
+});
+cameraSelect?.addEventListener("change", () => {
+  setCameraMode(cameraSelect.value);
 });
 touchJoystick?.addEventListener("pointerdown", (event) => {
   touchState.pointerId = event.pointerId;
@@ -952,10 +967,28 @@ function animate() {
     buoy.rotation.z = Math.sin(time * 1.2 + index) * 0.08;
   });
 
-  const cameraOffset = new THREE.Vector3(0, 5.6, -13.5).applyAxisAngle(new THREE.Vector3(0, 1, 0), surfState.heading);
-  const cameraTarget = surfer.position.clone().add(cameraOffset);
-  camera.position.lerp(cameraTarget, 0.08);
-  camera.lookAt(surfer.position.x, surfer.position.y + 1.1, surfer.position.z);
+  if (sceneState.cameraMode === "first") {
+    if (camera.fov !== 68) {
+      camera.fov = 68;
+      camera.updateProjectionMatrix();
+    }
+    const forward = new THREE.Vector3(Math.sin(surfState.heading), 0, Math.cos(surfState.heading));
+    const eyeTarget = surfer.position.clone().addScaledVector(forward, 0.65);
+    eyeTarget.y += 1.62 + Math.sin(surfState.bob * 0.7) * 0.035;
+    const lookTarget = surfer.position.clone().addScaledVector(forward, 14);
+    lookTarget.y += 1.25 + surfState.boardPitch * 1.4;
+    camera.position.lerp(eyeTarget, 0.28);
+    camera.lookAt(lookTarget);
+  } else {
+    if (camera.fov !== 55) {
+      camera.fov = 55;
+      camera.updateProjectionMatrix();
+    }
+    const cameraOffset = new THREE.Vector3(0, 5.6, -13.5).applyAxisAngle(new THREE.Vector3(0, 1, 0), surfState.heading);
+    const cameraTarget = surfer.position.clone().add(cameraOffset);
+    camera.position.lerp(cameraTarget, 0.08);
+    camera.lookAt(surfer.position.x, surfer.position.y + 1.1, surfer.position.z);
+  }
 
   const speedKnots = Math.max(0, surfState.velocity * 2.2);
   speedValue.textContent = `${speedKnots.toFixed(1)} knots`;
