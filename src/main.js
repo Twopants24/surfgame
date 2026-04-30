@@ -655,7 +655,7 @@ function sampleWaveField(x, z, time) {
     const pull = ramp * (0.7 + body * 0.45);
     const lift = ramp * THREE.MathUtils.lerp(0.25, 1, centered);
     const touching = ramp > 0.16 && shoulder > 0.24 && face > 0.25;
-    const attachable = lift > 0.34 && centered > 0.56 && waveHeight > mainWave.amplitude * 0.48;
+    const attachable = ramp > 0.28 && centered > 0.34 && waveHeight > mainWave.amplitude * 0.42;
 
     height += waveHeight;
     foam = THREE.MathUtils.clamp((face * 1.35 + lip * 1.2 + Math.max(0, waveHeight / mainWave.amplitude - 0.58) * 0.55) * shoulder * mainWave.foamAmount, 0, 1);
@@ -851,10 +851,10 @@ function animate() {
   const rampContact = wave.activeWave?.ramp ?? 0;
   const centerOffset = wave.activeWave ? wave.activeWave.targetAcross - wave.activeWave.across : 0;
   if (!airborne && !surfState.attachedToWave && rampContact > 0.08) {
-    const carryStep = mainWave.speed * (0.18 + rampContact * 0.28) * delta;
+    const carryStep = mainWave.speed * (0.72 + rampContact * 0.42) * delta;
     surfer.position.x += mainWave.direction.x * carryStep;
     surfer.position.z += mainWave.direction.y * carryStep;
-    surfState.velocity = Math.max(surfState.velocity, mainWave.speed * (0.22 + rampContact * 0.22));
+    surfState.velocity = Math.max(surfState.velocity, mainWave.speed * (0.65 + rampContact * 0.28));
   }
   if (!airborne && !surfState.attachedToWave && centerPull > 0.08) {
     const pullStep = THREE.MathUtils.clamp(centerOffset, -0.6, 0.6) * (1.45 + centerPull * 2.2) * delta;
