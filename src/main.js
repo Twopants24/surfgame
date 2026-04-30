@@ -880,15 +880,13 @@ function animate() {
   if (airborne) {
     surfState.attachedToWave = false;
     surfState.waveHoldTimer = 0;
-  } else if (
-    surfState.hopEjectTimer <= 0 &&
-    (wave.activeWave?.attachable || (surfState.waveHoldTimer > 0.5 && rampContact > 0.12))
-  ) {
+  } else if (surfState.hopEjectTimer <= 0 && wave.activeWave?.attachable) {
     surfState.attachedToWave = true;
-    surfState.waveHoldTimer = Math.max(surfState.waveHoldTimer, 1.1);
+    surfState.waveHoldTimer = Math.max(surfState.waveHoldTimer, 0.45);
     surfState.waveLift = THREE.MathUtils.lerp(surfState.waveLift, 0.03, 0.24);
-  } else if (surfState.attachedToWave && (!wave.activeWave || !wave.activeWave.touching) && surfState.waveHoldTimer <= 0) {
+  } else if (surfState.attachedToWave && (!wave.activeWave || !wave.activeWave.touching)) {
     surfState.attachedToWave = false;
+    surfState.waveHoldTimer = 0;
   }
 
   if (surfState.attachedToWave && wave.activeWave) {
@@ -901,13 +899,6 @@ function animate() {
     surfState.velocity = THREE.MathUtils.lerp(surfState.velocity, rideCarry, 0.12);
     const waveHeading = Math.atan2(wave.activeWave.direction.x, wave.activeWave.direction.y);
     surfState.heading = THREE.MathUtils.lerp(surfState.heading, waveHeading, 0.035 + boardProfile.waveGrip * 0.02);
-  } else if (surfState.attachedToWave && surfState.waveHoldTimer > 0) {
-    const rideCarry = mainWave.speed * 1.08;
-    surfer.position.x += mainWave.direction.x * rideCarry * delta;
-    surfer.position.z += mainWave.direction.y * rideCarry * delta;
-    surfState.velocity = THREE.MathUtils.lerp(surfState.velocity, rideCarry, 0.12);
-    const waveHeading = Math.atan2(mainWave.direction.x, mainWave.direction.y);
-    surfState.heading = THREE.MathUtils.lerp(surfState.heading, waveHeading, 0.04);
   }
   if (airborne) {
     surfer.position.x += surfState.ejectVelocityX * delta;
